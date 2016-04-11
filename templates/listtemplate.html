@@ -1,0 +1,24 @@
+{% block preamble %} {% endblock %}
+<ul class="list-group">
+{% for item in items %}
+    <li class="list-group-item">
+        {% if item.badge %}
+            <span class="label {{labelColor[item.type]}}" style="float:right">{{item.badge}}</span>
+        {% endif %}
+        <strong>
+        {% if item.url %}
+            <a href="{{item.url}}">{{item.title}}</a>
+        {% else %}
+            {{item.title}}
+        {% endif %}
+        </strong><br/>
+        {{item.author}} <br/>
+        {{item.venue}}{{' ({})'.format(item.venueseries) if item.venueseries}}, {{item.year}} <br/>
+        {% if item.note %}
+            <i>{{item.note}}</i>
+        {% endif %}
+        
+    </li>
+{% endfor %}
+</ul>
+{% block postamble %}{% endblock %}
