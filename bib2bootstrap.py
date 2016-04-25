@@ -1,40 +1,55 @@
 #!/usr/bin/env python
 
-import bibtexparser
 import argparse
-import re
 import operator
-import jinja2
+import re
 import sys
 from collections import defaultdict
 
+import bibtexparser
+import jinja2
 
 TEMPLATE_FOLDER = './templates/'
-labelColor = defaultdict(
-    lambda: 'label-default',
-    {
-    'inproceedings': 'label-success',
-    'article': 'label-primary',
-    'techreport': 'label-default'
-    })
+labelColor = defaultdict(lambda: 'label-default',
+                         {
+                             'inproceedings': 'label-success',
+                             'article': 'label-primary',
+                             'techreport': 'label-default'
+                         })
 
-def cleanBrackets(s):
+
+def clean_brackets(s):
+    """
+    Gets rid of the extra brackets in the bibtex entry
+    :param s:
+    :return:
+    """
     return s.replace('{', '').replace('}', '')
 
 
-def formatAuthors(authorString):
-    authors = re.split(r'\s+and\s+', authorString)
-    formattedAuthors = []
+def format_authors(author_string):
+    """
+    Format the authors.
+    :param author_string: Author string as it appears in bibtex file
+    :return: A more human readable string.
+    """
+    authors = re.split(r'\s+and\s+', author_string)
+    formatted_authors = []
     for a in authors:
         a = a.strip()
         # print (a)
         if ',' in a:
             a = ' '.join(reversed(a.split(','))).strip()
-        formattedAuthors.append(a)
-    return ', '.join(formattedAuthors)
+        formatted_authors.append(a)
+    return ', '.join(formatted_authors)
 
 
-def getVenue(d):
+def get_venue(d):
+    """
+    Prettify the name of the venue that the papaer appeared in.
+    :param d:
+    :return:
+    """
     et = d['ENTRYTYPE'].lower()
     if et == 'inproceedings':
         return 'In ' + d['booktitle']
@@ -47,7 +62,13 @@ def getVenue(d):
     else:
         raise Exception("Do not know how to parse entry type {}".format(et))
 
-def getBadge(d):
+
+def get_badge(d):
+    """
+    Get the name of badge to be used in the list. Only 3 types supported so far: conference, journal, techreport.
+    :param d:
+    :return:
+    """
     et = d['ENTRYTYPE'].lower()
     if et == 'inproceedings':
         return 'Conference paper'
@@ -58,34 +79,54 @@ def getBadge(d):
     else:
         return ''
 
-def processEntry(d):
-    return {'title': cleanBrackets(d['title']),
-            'author': formatAuthors(d['author']),
-            'venue': getVenue(d), 'year': int(d['year']),
+
+def process_entry(d):
+    """
+    Process a single bibtex entry. Return our own custom item
+    :param d: dictionary as given by bibtexparser
+    :return:
+    """
+    return {'title': clean_brackets(d['title']),
+            'author': format_authors(d['author']),
+            'venue': get_venue(d), 'year': int(d['year']),
             'note': d['annote'] if 'annote' in d else '',
             'url': d['link'] if 'link' in d else '',
             'venueseries': d['series'] if 'series' in d else '',
             'type': d['ENTRYTYPE'],
-            'badge': getBadge(d)
+            'badge': get_badge(d)
             }
 
 
-def processFile(fname, skip):
+def process_file(fname, skip):
+    """
+    Process the bibtex file and return a dictionary of items for rendering
+    :param fname: filename of the bibtex file (as string)
+    :param skip: a particular types of bibtex entries we don't want to show (as list of strings)
+    :return:
+    """
     with open(fname) as bib:
         db = bibtexparser.load(bib)
         results = []
         for key, d in db.entries_dict.items():
-            e = processEntry(d)
+            e = process_entry(d)
             if skip is None or e['type'] not in skip:
                 results.append(e)
         return results
 
 
-def render(listofItems, fd, templateName='listtemplate.html',
-           templateFolder=TEMPLATE_FOLDER):
-    loader = jinja2.FileSystemLoader(templateFolder)
-    template = loader.load(jinja2.Environment(), templateName)
-    print(template.render(items=listofItems, labelColor=labelColor), file=fd)
+def render(items, fd, template_name='listtemplate.html',
+           template_folder=TEMPLATE_FOLDER):
+    """
+    Render the HTML with Jinja's help
+    :param items: items of the bibliography list
+    :param fd: file descriptor to render to (either file of stdout)
+    :param template_name: Name of jinja template.
+    :param template_folder: Folder that stores the Jinja templates (as string)
+    :return:
+    """
+    loader = jinja2.FileSystemLoader(template_folder)
+    template = loader.load(jinja2.Environment(), template_name)
+    print(template.render(items=items, labelColor=labelColor), file=fd)
 
 
 if __name__ == "__main__":
@@ -101,17 +142,21 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Reverse sorting direction.')
     parser.add_argument('--skip', nargs='+',
-        help='Skip entries of given types')
+                        help='Skip entries of given types')
     # TODO: add filtering by type
     # TODO: add ability to add header
     options = parser.parse_args()
 
-    res = processFile(options.file, options.skip)
+    # Parse our file
+    res = process_file(options.file, options.skip)
+    # See if we need to sort or not
     if options.sort is not None:
         res.sort(key=lambda x: operator.getitem(x, options.sort),
                  reverse=options.reverse)
     if options.output:
+        # If we have a file name, dump ot file
         with open(options.output, 'w') as f:
             render(res, f)
     else:
+        # Otherwise write to stdout
         render(res, sys.stdout)
