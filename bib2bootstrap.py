@@ -138,13 +138,13 @@ if __name__ == "__main__":
     parser.add_argument(
         '-s', '--sort', choices=['year', 'author'], default='year',
         help='Sort by this field.')
+    parser.add_argument('--template', help='Name of the template',
+        default='listtemplate.html')
     parser.add_argument('-r', '--reverse',
                         action='store_true',
                         help='Reverse sorting direction.')
     parser.add_argument('--skip', nargs='+',
                         help='Skip entries of given types')
-    # TODO: add filtering by type
-    # TODO: add ability to add header
     options = parser.parse_args()
 
     # Parse our file
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     if options.output:
         # If we have a file name, dump ot file
         with open(options.output, 'w') as f:
-            render(res, f)
+            render(res, f, template=options.template)
     else:
         # Otherwise write to stdout
-        render(res, sys.stdout)
+        render(res, sys.stdout, template=options.template)
