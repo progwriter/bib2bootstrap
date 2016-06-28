@@ -156,7 +156,7 @@ if __name__ == "__main__":
     if options.output:
         # If we have a file name, dump ot file
         with open(options.output, 'w') as f:
-            render(res, f, template=options.template)
+            render(res, f, template_name=options.template)
     else:
         # Otherwise write to stdout
-        render(res, sys.stdout, template=options.template)
+        render(res, sys.stdout, template_name=options.template)
